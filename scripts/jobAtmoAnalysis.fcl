@@ -1,0 +1,89 @@
+#include "energyreco.fcl"
+#include "angularreco.fcl"
+#include "atmo_analysis_config.fcl"
+#include "services_dune.fcl"
+
+process_name: AtmoAna
+
+services:
+{
+  # Load the service that manages root files for histograms.
+  TFileService: { fileName: "atmo_ana.root"}
+  TimeTracker:       {}
+  RandomNumberGenerator: {}
+  MemoryTracker:         { } # default is one
+  message:      @local::dune_message_services_prod_debug
+  FileCatalogMetadata:
+    @local::art_file_catalog_mc
+    @table::dunefd_1x2x6_simulation_services 
+    Geometry:                  @local::dune10kt_1x2x6_v5_refactored_geo
+
+}
+
+source:
+{
+  module_type: RootInput
+  maxEvents:  -1        # Number of events to create
+}
+
+physics:
+{
+ analyzers:
+{
+ analysistree:      @local::atmoAnalysis
+}
+ #define the output stream, there could be more than one if using filters 
+ stream1:  [ ]
+
+ #define the producer and filter modules for this path, order matters, 
+ #filters reject all following items.  see lines starting physics.producers below
+ ana:  [ analysistree ] 
+
+ #end_paths is a keyword and contains the paths that do not modify the art::Event, 
+ #ie analyzers and output streams.  these all run simultaneously
+ end_paths:     [ana]  
+# end_paths:     [stream1]  
+}
+
+dunefd_hd_producers:
+{
+    #neutrino energy reco
+    energyrecnumu:      @local::dunefd_nuenergyreco_pandora_numu
+    energyrecnumurange: @local::dunefd_nuenergyreco_pandora_numu_range
+    energyrecnumumcs:   @local::dunefd_nuenergyreco_pandora_numu_mcs
+    energyrecnue:       @local::dunefd_nuenergyreco_pandora_nue
+    energyrecnc:        @local::dunefd_nuenergyreco_pandora_nc
+    #angle reco configuration
+    anglereconue:       @local::dunefd_nuangularreco_pandora_nue
+    anglereconumu:      @local::dunefd_nuangularreco_pandora_numu
+    anglereconuepfps:   @local::dunefd_nuangularreco_pandora_nue_allpfps
+    anglereconumupfps:  @local::dunefd_nuangularreco_pandora_numu_allpfps
+}
+
+dunefd_hd_ereco:
+[
+    energyrecnumu,
+    energyrecnumurange,
+    energyrecnumumcs,
+    energyrecnue,
+    energyrecnc
+]
+
+dunefd_hd_anglereco:
+[
+    anglereconue,
+    anglereconumu,
+    anglereconuepfps,
+    anglereconumupfps
+]
+
+physics.producers: {
+    @table::dunefd_hd_producers
+}
+
+physics.prod: [
+    @sequence::dunefd_hd_ereco,
+    @sequence::dunefd_hd_anglereco
+]
+
+physics.trigger_paths: [ prod ] 
